@@ -567,6 +567,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             Log.d(TAG, "onBackKey newTitle=" + newTitle);
         }
         mInfo.setTitle(newTitle, getModelWriter());
+        // Lawnchair: the write above goes to the workspace database through the model writer, and
+        // an app drawer folder is not in it -- its rename would be dropped on the next reload.
+        app.lawnchair.data.folder.DrawerFolders.renameIfDrawerFolder(
+                getContext(), mInfo, newTitle);
         mFolderIcon.onTitleChanged(newTitle);
 
         if (TextUtils.isEmpty(mInfo.title)) {
