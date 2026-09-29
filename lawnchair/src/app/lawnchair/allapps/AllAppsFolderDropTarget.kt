@@ -15,6 +15,7 @@ import com.android.launcher3.model.data.ItemInfo
 import com.android.launcher3.util.ComponentKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -79,13 +80,25 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
         }
     }
 
-    /** Existing folder: append the app, keeping what is already in it. */
+    /**
+     * Existing folder: append the app, keeping what is already in it.
+     *
+     * The contents come from the database rather than from [FolderInfo], whose getAppContents()
+     * only returns WorkspaceItemInfo. Drawer folders are built from AppInfo, so it comes back
+     * empty and the folder's items were being replaced by just the dropped app. Reading the stored
+     * list also preserves entries for apps that are not currently installed.
+     */
     private fun addToFolder(folder: FolderInfo, draggedKey: ComponentKey) {
-        val existing = folder.getAppContents().mapNotNull { componentKeyOf(it)?.toString() }
         val dragged = draggedKey.toString()
-        if (dragged in existing) return
         scope.launch {
-            folderService.updateFolderWithItems(folder.id, folder.title?.toString().orEmpty(), existing + dragged)
+            val entry = folderService.getFoldersFlow().first()
+                .firstOrNull { it.id == folder.id } ?: return@launch
+            if (dragged in entry.itemComponentKeys) return@launch
+            folderService.updateFolderWithItems(
+                entry.id,
+                entry.title,
+                entry.itemComponentKeys + dragged,
+            )
         }
     }
 
