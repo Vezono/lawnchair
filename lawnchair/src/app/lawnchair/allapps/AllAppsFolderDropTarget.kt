@@ -3,6 +3,7 @@ package app.lawnchair.allapps
 import android.graphics.Rect
 import android.view.View
 import android.view.ViewGroup
+import app.lawnchair.data.AppDatabase
 import app.lawnchair.data.folder.service.FolderService
 import app.lawnchair.views.HomeScreenDropTarget
 import com.android.launcher3.BubbleTextView
@@ -15,7 +16,6 @@ import com.android.launcher3.model.data.ItemInfo
 import com.android.launcher3.util.ComponentKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -30,6 +30,7 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
 
     private val scope = CoroutineScope(Dispatchers.Main)
     private val folderService get() = FolderService.INSTANCE.get(launcher)
+    private val folderDao get() = AppDatabase.INSTANCE.get(launcher).folderDao()
 
     /** The icon currently under the finger, scaled up to show it would receive the drop. */
     private var hovered: View? = null
@@ -91,13 +92,12 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
     private fun addToFolder(folder: FolderInfo, draggedKey: ComponentKey) {
         val dragged = draggedKey.toString()
         scope.launch {
-            val entry = folderService.getFoldersFlow().first()
-                .firstOrNull { it.id == folder.id } ?: return@launch
-            if (dragged in entry.itemComponentKeys) return@launch
+            val existing = folderDao.getFolderItems(folder.id).mapNotNull { it.componentKey }
+            if (dragged in existing) return@launch
             folderService.updateFolderWithItems(
-                entry.id,
-                entry.title,
-                entry.itemComponentKeys + dragged,
+                folder.id,
+                folder.title?.toString().orEmpty(),
+                existing + dragged,
             )
         }
     }

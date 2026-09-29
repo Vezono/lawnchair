@@ -31,6 +31,10 @@ interface FolderDao {
     @Query("SELECT MAX(rank) FROM Folders")
     suspend fun getMaxFolderRank(): Int?
 
+    /** One-shot read of a folder's items, for callers that must not subscribe to the whole list. */
+    @Query("SELECT * FROM FolderItems WHERE folderId = :folderId ORDER BY rank ASC")
+    suspend fun getFolderItems(folderId: Int): List<FolderItemEntity>
+
     @Query("DELETE FROM FolderItems WHERE folderId = :folderId")
     suspend fun deleteFolderItemsByFolderId(folderId: Int)
 
