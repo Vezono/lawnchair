@@ -556,7 +556,10 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (mAccessibilityDragListener != null) {
             mAccessibilityDragListener.onDragStart(dragObject, options);
         }
-        if (!mLauncher.isInState(EDIT_MODE)) {
+        // Lawnchair: a drag that starts in the app drawer now stays there, so the app can be
+        // dropped onto another icon to make a drawer folder, or handed to the home screen through
+        // the Home screen drop target. Without this every drag yanked the drawer shut at once.
+        if (!mLauncher.isInState(EDIT_MODE) && !mLauncher.isInState(ALL_APPS)) {
             mLauncher.getStateManager().goToState(SPRING_LOADED);
         }
         mStatsLogManager.logger().withItemInfo(dragObject.dragInfo)

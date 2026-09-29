@@ -108,6 +108,10 @@ public class LauncherAccessibilityDelegate extends BaseAccessibilityDelegate<Lau
                 R.string.action_deep_shortcut, KeyEvent.KEYCODE_S));
         mActions.put(CLOSE, new LauncherAction(CLOSE,
                 R.string.action_close, KeyEvent.KEYCODE_X));
+        // Lawnchair: HideAppDropTarget. Drop target actions are looked up in this map by
+        // getSupportedActions(), so an unregistered id would dereference null there.
+        mActions.put(R.id.action_hide_app, new LauncherAction(
+                R.id.action_hide_app, R.string.hide_drop_target_label, KeyEvent.KEYCODE_H));
     }
 
     private static boolean isNotInShortcutMenu(@Nullable View view) {

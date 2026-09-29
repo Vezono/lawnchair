@@ -140,6 +140,10 @@ public class SecondaryDropTarget extends ButtonDropTarget implements OnAlarmList
 
     @Override
     protected boolean supportsDrop(ItemInfo info) {
+        // Lawnchair: drawer drags show Cancel / Home screen / Hide instead.
+        if (app.lawnchair.views.HomeScreenDropTarget.isDraggingFromDrawer(getContext())) {
+            return false;
+        }
         return getButtonType(info, getViewUnderDrag(info)) != INVALID;
     }
 

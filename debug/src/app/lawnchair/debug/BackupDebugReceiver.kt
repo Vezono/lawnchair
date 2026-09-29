@@ -8,6 +8,11 @@ import android.net.Uri
 import android.util.Log
 import app.lawnchair.backup.LawnchairBackup
 import app.lawnchair.data.AppDatabase
+import app.lawnchair.data.iconoverride.IconOverride
+import app.lawnchair.icons.picker.IconType
+import app.lawnchair.icons.picker.IconPickerItem
+import com.android.launcher3.util.ComponentKey
+import android.os.Process
 import app.lawnchair.preferences2.PreferenceManager2
 import com.patrykmichalik.opto.core.firstBlocking
 import java.io.File
@@ -39,6 +44,7 @@ class BackupDebugReceiver : BroadcastReceiver() {
                     ACTION_BACKUP -> backup(context, requireNotNull(path))
                     ACTION_RESTORE -> restore(context, requireNotNull(path))
                     ACTION_WIPE_FOLDERS -> wipeFolders(context)
+                    ACTION_SET_ICON -> setIconOverride(context)
                     else -> Log.w(TAG, "unknown action ${intent.action}")
                 }
             } catch (t: Throwable) {
@@ -56,6 +62,9 @@ class BackupDebugReceiver : BroadcastReceiver() {
         Log.i(TAG, "STATE folders=${folders.size} " +
             folders.joinToString { "${it.folder.title}(${it.items.size} items)" })
         Log.i(TAG, "STATE hiddenApps=${hidden.size} ${hidden.sorted()}")
+        val overrides = db.iconOverrideDao().observeAll().first()
+        Log.i(TAG, "STATE iconOverrides=${overrides.size} " +
+            overrides.joinToString { "${it.target.componentName.packageName}->${it.iconPickerItem.drawableName}" })
         val dir = context.getDatabasePath("preferences").parentFile
         Log.i(TAG, "STATE dbFiles=" + dir?.listFiles()?.joinToString { "${it.name}:${it.length()}" })
     }
@@ -82,6 +91,26 @@ class BackupDebugReceiver : BroadcastReceiver() {
         Log.i(TAG, "RESTORE done from $path")
     }
 
+    private suspend fun setIconOverride(context: Context) {
+        val dao = AppDatabase.INSTANCE.get(context).iconOverrideDao()
+        val target = ComponentKey(
+            android.content.ComponentName("com.android.settings", "com.android.settings.Settings"),
+            Process.myUserHandle(),
+        )
+        dao.insert(
+            IconOverride(
+                target = target,
+                iconPickerItem = IconPickerItem(
+                    packPackageName = "com.example.iconpack",
+                    drawableName = "debug_test_icon",
+                    label = "Debug Test Icon",
+                    type = IconType.Normal,
+                ),
+            ),
+        )
+        Log.i(TAG, "SET_ICON inserted override for $target")
+    }
+
     /** Absolute paths are used as-is; anything else lands in the app's external files dir. */
     private fun resolve(context: Context, path: String): File =
         if (path.startsWith("/")) File(path) else File(context.getExternalFilesDir(null), path)
@@ -99,5 +128,6 @@ class BackupDebugReceiver : BroadcastReceiver() {
         private const val ACTION_BACKUP = "app.lawnchair.debug.BACKUP"
         private const val ACTION_RESTORE = "app.lawnchair.debug.RESTORE"
         private const val ACTION_WIPE_FOLDERS = "app.lawnchair.debug.WIPE_FOLDERS"
+        private const val ACTION_SET_ICON = "app.lawnchair.debug.SET_ICON"
     }
 }

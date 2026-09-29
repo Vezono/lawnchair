@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Accessibility action for the Hide app drop target. -->
+    <item name="action_hide_app" type="id" />
+</resources>
