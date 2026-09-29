@@ -14,6 +14,7 @@ import app.lawnchair.util.scaleDownToDisplaySize
 import app.lawnchair.wallpaper.WallpaperColorsCompat
 import app.lawnchair.wallpaper.WallpaperManagerCompat
 import com.android.launcher3.BuildConfig
+import app.lawnchair.data.AppDatabase
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherFiles
 import com.android.launcher3.R
@@ -77,12 +78,37 @@ class LawnchairBackup(
                 wallpaperManager.setBitmap(BitmapFactory.decodeStream(it))
             }
         }
-        context.getDatabasePath(LAUNCHER_DB_FILE_NAME).parentFile?.deleteRecursively()
+        // Lawnchair: this used to be parentFile?.deleteRecursively(), which took the whole
+        // databases/ directory with it -- including the ~10 MB icon cache, which then had to be
+        // rebuilt from scratch, and the Room database holding drawer folders, which is still open
+        // at this point. Only the launcher database actually needs clearing; everything else is
+        // overwritten from the zip below.
+        val databasesDir = context.getDatabasePath(LAUNCHER_DB_FILE_NAME).parentFile
+        deleteDatabase(databasesDir, LauncherAppState.getIDP(context).dbFile)
+        deleteDatabase(databasesDir, RESTORED_DB_FILE_NAME)
+
         DeviceGridState(info.gridState).writeToPrefs(context, true)
         readZip(handlers)
 
+        // Lawnchair: the Room database file was just replaced underneath its still-open
+        // connection. Drop the stale write-ahead log so it cannot be replayed over the restored
+        // contents when the launcher restarts.
+        deleteDatabaseSidecars(databasesDir, PREFS_DB_FILE_NAME)
+
         var dbController = ModelDbController(context)
         RestoreDbTask.performRestore(context, dbController)
+    }
+
+    private fun deleteDatabase(dir: File?, name: String) {
+        dir ?: return
+        File(dir, name).delete()
+        deleteDatabaseSidecars(dir, name)
+    }
+
+    /** Removes the journal/WAL files SQLite keeps beside a database. */
+    private fun deleteDatabaseSidecars(dir: File?, name: String) {
+        dir ?: return
+        listOf("-journal", "-wal", "-shm").forEach { File(dir, "$name$it").delete() }
     }
 
     private suspend fun readZip(handlers: Map<String, suspend (InputStream) -> Unit>) {
@@ -142,6 +168,11 @@ class LawnchairBackup(
 
         @SuppressLint("MissingPermission")
         suspend fun create(context: Context, contents: Int, screenshotBitmap: Bitmap, fileUri: Uri) {
+            // Lawnchair: the Room database holding drawer folders, icon overrides and wallpapers
+            // runs in WAL mode, so recent writes sit in preferences-wal until something
+            // checkpoints them. getFiles() copies the main database file only, so without this a
+            // folder created moments ago is silently missing from the backup.
+            AppDatabase.INSTANCE.get(context).checkpoint()
             val idp = LauncherAppState.getIDP(context)
             val createdAt = Timestamp.newBuilder()
                 .setSeconds(System.currentTimeMillis() / 1000)

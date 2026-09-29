@@ -301,6 +301,12 @@ android {
             }
         }
 
+        debug {
+            manifest.srcFile 'debug/AndroidManifest.xml'
+            java.srcDirs += 'debug/src'
+            kotlin.srcDirs += 'debug/src'
+        }
+
         lawn {
             java.srcDirs = ['src_flags', 'src_shortcuts_overrides', 'lawnchair/src', 'tests/shared']
             kotlin.directories.addAll('src_flags', 'src_shortcuts_overrides', 'lawnchair/src', 'tests/shared')
