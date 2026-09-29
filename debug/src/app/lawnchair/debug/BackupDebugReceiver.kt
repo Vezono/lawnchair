@@ -45,6 +45,7 @@ class BackupDebugReceiver : BroadcastReceiver() {
                     ACTION_RESTORE -> restore(context, requireNotNull(path))
                     ACTION_WIPE_FOLDERS -> wipeFolders(context)
                     ACTION_SET_ICON -> setIconOverride(context)
+                    ACTION_ADD_TO_FOLDER -> addAppToFolder(context, intent.getStringExtra("component"))
                     else -> Log.w(TAG, "unknown action ${intent.action}")
                 }
             } catch (t: Throwable) {
@@ -91,6 +92,24 @@ class BackupDebugReceiver : BroadcastReceiver() {
         Log.i(TAG, "RESTORE done from $path")
     }
 
+    /** Writes exactly what a drawer folder drop writes, without the drag machinery. */
+    private suspend fun addAppToFolder(context: Context, component: String?) {
+        val dao = AppDatabase.INSTANCE.get(context).folderDao()
+        val service = app.lawnchair.data.folder.service.FolderService.INSTANCE.get(context)
+        val folder = dao.getAllFoldersWithItems().first().firstOrNull() ?: run {
+            Log.w(TAG, "ADD_TO_FOLDER no folders")
+            return
+        }
+        val key = component ?: "com.android.settings/com.android.settings.Settings#0"
+        val existing = dao.getFolderItems(folder.folder.id).mapNotNull { it.componentKey }
+        if (key in existing) {
+            Log.i(TAG, "ADD_TO_FOLDER $key already in ${folder.folder.title}")
+            return
+        }
+        service.updateFolderWithItems(folder.folder.id, folder.folder.title, existing + key)
+        Log.i(TAG, "ADD_TO_FOLDER added $key to ${folder.folder.title}, now ${existing.size + 1}")
+    }
+
     private suspend fun setIconOverride(context: Context) {
         val dao = AppDatabase.INSTANCE.get(context).iconOverrideDao()
         val target = ComponentKey(
@@ -129,5 +148,6 @@ class BackupDebugReceiver : BroadcastReceiver() {
         private const val ACTION_RESTORE = "app.lawnchair.debug.RESTORE"
         private const val ACTION_WIPE_FOLDERS = "app.lawnchair.debug.WIPE_FOLDERS"
         private const val ACTION_SET_ICON = "app.lawnchair.debug.SET_ICON"
+        private const val ACTION_ADD_TO_FOLDER = "app.lawnchair.debug.ADD_TO_FOLDER"
     }
 }
