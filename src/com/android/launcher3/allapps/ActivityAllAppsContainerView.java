@@ -646,13 +646,22 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         return isSearching();
     }
 
+    /** Lawnchair: true while the user is still in the search field, whatever the results show. */
+    private boolean isSearchFieldFocused() {
+        View editText = mSearchUiManager == null ? null : mSearchUiManager.getEditText();
+        return editText != null && editText.isFocused();
+    }
+
     @Override
     public void onActivePageChanged(int currentActivePage) {
         if (mSearchTransitionController.isRunning()) {
             // Will be called at the end of the animation.
             return;
         }
-        if (currentActivePage != SEARCH) {
+        // Lawnchair: clearing the last character exits search, which lands here and used to close
+        // the keyboard mid-typing. Leave it up while the search field still has focus; the other
+        // ways out of search (back, scrolling the list, closing the drawer) drop focus first.
+        if (currentActivePage != SEARCH && !isSearchFieldFocused()) {
             mActivityContext.hideKeyboard();
         }
         if (mAH.get(currentActivePage).mRecyclerView != null) {
