@@ -54,11 +54,23 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
 
     override fun prepareAccessibilityDrop() = Unit
 
+    /**
+     * DropTarget.getDropView() defaults to casting itself to a View, which this is not. Returning
+     * null keeps the raw touch coordinates in DragObject.x/y, which is what the hit test below
+     * already converts from.
+     */
+    override fun getDropView(): View? = null
+
     override fun acceptDrop(d: DropTarget.DragObject): Boolean = findDropCandidate(d) != null
 
     override fun onDrop(d: DropTarget.DragObject, options: com.android.launcher3.dragndrop.DragOptions) {
         val candidate = findDropCandidate(d)
         setHovered(null)
+        // DragObject.deferDragViewCleanupPostAnimation defaults to true, which promises that this
+        // target will animate the drag view away and dispose of it. We drop instantly, so hand
+        // that back to the drag controller -- otherwise the dragged icon and the drop target bar
+        // stay on screen for good.
+        d.deferDragViewCleanupPostAnimation = false
         val draggedKey = componentKeyOf(d.dragInfo) ?: return
         when (val target = candidate?.let { tagOf(it) }) {
             is FolderInfo -> addToFolder(target, draggedKey)

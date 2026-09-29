@@ -670,7 +670,10 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         }
         // Header keeps track of active recycler view to properly render header protection.
         mHeader.setActiveRV(currentActivePage);
-        reset(true /* animate */, !isSearching() /* exitSearch */);
+        // Lawnchair: exiting search resets the search bar, which clears focus and hides the
+        // keyboard -- so deleting the last character still dismissed the IME even with the guard
+        // above. Hold the reset back while the user is still in the search field.
+        reset(true /* animate */, !isSearching() && !isSearchFieldFocused() /* exitSearch */);
 
         mWorkManager.onActivePageChanged(currentActivePage);
     }
