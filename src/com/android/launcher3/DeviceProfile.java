@@ -1763,7 +1763,12 @@ public class DeviceProfile {
         } else {
             // Pad the bottom of the workspace with hotseat bar
             // and leave a bit of space in case a widget go all the way down
-            int paddingBottom = hotseatBarSizePx + workspaceBottomPadding - mInsets.bottom;
+            // Lawnchair: mInsets.bottom is subtracted because the dock normally already reserves
+            // it. With the dock turned off hotseatBarSizePx is 0 and this goes negative, which
+            // insetPadding() then pushes into cellLayoutPaddingPx.bottom -- making the grid
+            // believe it has extra room and spill its last row over the navigation bar.
+            int paddingBottom = Math.max(0,
+                    hotseatBarSizePx + workspaceBottomPadding - mInsets.bottom);
             if (!mIsResponsiveGrid) {
                 paddingBottom +=
                         workspacePageIndicatorHeight - mWorkspacePageIndicatorOverlapWorkspace;

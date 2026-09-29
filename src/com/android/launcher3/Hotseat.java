@@ -120,6 +120,12 @@ public class Hotseat extends FrameLayout implements Insettable {
     PreferenceManager2 preferenceManager2;
     PreferenceManager preferenceManager;
 
+    /**
+     * Lawnchair: whether the dock is turned on. When it is off DeviceProfile reports a zero
+     * hotseatBarSizePx, so this view must not draw either -- see {@link #setVisibility(int)}.
+     */
+    private final boolean mHotseatEnabled;
+
     public Hotseat(Context context) {
         this(context, null);
     }
@@ -136,6 +142,7 @@ public class Hotseat extends FrameLayout implements Insettable {
         preferenceManager = PreferenceManager.getInstance(context);
         HotseatMode hotseatMode = PreferenceCacheExtensionsKt.firstCached(preferenceManager2.getHotseatMode());
         var hotseatEnabled = PreferenceCacheExtensionsKt.firstCached(preferenceManager2.isHotseatEnabled());
+        mHotseatEnabled = hotseatEnabled;
 
         if (!hotseatEnabled) {
             hotseatMode = DisabledHotseat.INSTANCE;
@@ -199,6 +206,20 @@ public class Hotseat extends FrameLayout implements Insettable {
         setUpBackground();
         setClipChildren(false);
         setClipToPadding(false);
+
+        // Lawnchair: DisabledHotseat only removes the search bar, so without this the icons would
+        // still be drawn. They have no space reserved for them once the dock is off
+        // (hotseatBarSizePx is 0) and clipChildren is disabled, so they would spill past the
+        // bottom of the screen and land on top of the navigation bar.
+        if (!mHotseatEnabled) {
+            super.setVisibility(GONE);
+        }
+    }
+
+    /** Lawnchair: a disabled dock stays hidden whatever the launcher state asks for. */
+    @Override
+    public void setVisibility(int visibility) {
+        super.setVisibility(mHotseatEnabled ? visibility : GONE);
     }
 
     private void setUpBackground() {
