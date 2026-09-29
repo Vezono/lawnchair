@@ -133,7 +133,10 @@ class LawnchairAlphabeticalAppsList<T>(
                     position++
 
                     if (prefs.folderApps.get()) {
-                        filteredKeys.addAll(resolvedApps.map { it.toComponentKey().toString() })
+                        // Use the folder's stored keys rather than the resolved AppInfo list: an
+                        // app that momentarily fails to resolve from the apps store would
+                        // otherwise escape the filter and stay visible in the main list.
+                        filteredKeys.addAll(folderEntry.itemComponentKeys)
                     }
                 }
             }
