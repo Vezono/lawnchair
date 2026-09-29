@@ -8,6 +8,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import app.lawnchair.data.folder.FolderEntry
 import app.lawnchair.data.folder.model.FolderViewModel
+import app.lawnchair.preferences2.ReloadHelper
 import app.lawnchair.launcher
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
@@ -54,6 +55,11 @@ class LawnchairAlphabeticalAppsList<T>(
      */
     private val filteredKeys = mutableSetOf<String>()
 
+    private val reloadHelper by lazy { ReloadHelper(context) }
+
+    /** Suppresses a grid reload for the first emission, which is just the initial population. */
+    private var foldersPopulated = false
+
     init {
         context.launcher.deviceProfile.inv.addOnChangeListener(this)
         (context as? LifecycleOwner)?.lifecycle?.addObserver(this)
@@ -75,9 +81,17 @@ class LawnchairAlphabeticalAppsList<T>(
     private fun observeFolders() {
         viewModel.folders.observeOnce(context as LifecycleOwner) { folders ->
             if (folders != null) {
+                val changed = folders != folderList.toList()
                 folderList.clear()
                 folderList.addAll(folders)
                 updateAdapterItems()
+                // updateAdapterItems refreshes the model but the drawer keeps showing its previous
+                // contents until the grid is reloaded. Doing that at write time instead left the
+                // display one edit behind, because the folder data arrives here afterwards.
+                if (changed && foldersPopulated) {
+                    reloadHelper.reloadGrid()
+                }
+                foldersPopulated = true
             }
         }
     }
