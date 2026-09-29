@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import app.lawnchair.data.AppDatabase
 import app.lawnchair.data.folder.service.FolderService
+import app.lawnchair.preferences2.ReloadHelper
 import app.lawnchair.views.HomeScreenDropTarget
 import com.android.launcher3.BubbleTextView
 import com.android.launcher3.DropTarget
@@ -31,6 +32,13 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
     private val scope = CoroutineScope(Dispatchers.Main)
     private val folderService get() = FolderService.INSTANCE.get(launcher)
     private val folderDao get() = AppDatabase.INSTANCE.get(launcher).folderDao()
+
+    /**
+     * Folder edits made from the settings screen go through FolderViewModel, which reloads the
+     * grid after writing. Writing to the database on its own updates the drawer's model but leaves
+     * what is on screen untouched until the launcher restarts, so do the same here.
+     */
+    private val reloadHelper by lazy { ReloadHelper(launcher) }
 
     /** The icon currently under the finger, scaled up to show it would receive the drop. */
     private var hovered: View? = null
@@ -100,6 +108,7 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
                 folder.title?.toString().orEmpty(),
                 existing + dragged,
             )
+            reloadHelper.reloadGrid()
         }
     }
 
