@@ -162,7 +162,7 @@ fun AppDrawerPreferences(
             SliderPreference(
                 adapter = prefs2.drawerPaddingTopFactor.getAdapter(),
                 label = stringResource(id = R.string.top_padding_label),
-                valueRange = 1.0F..2.0F,
+                valueRange = 0.5F..2.0F,
                 step = 0.05F,
                 showAsPercentage = true,
             )

@@ -374,7 +374,7 @@ public class DeviceProfile {
         widgetPaddingFactor = Utilities.boundToRange(PreferenceCacheExtensionsKt
                 .firstCached(preferenceManager2.getWidgetPaddingFactor()), 0f, 2f);
         drawerPaddingTopFactor = Utilities.boundToRange(PreferenceCacheExtensionsKt
-                .firstCached(preferenceManager2.getDrawerPaddingTopFactor()), 1f, 2f);
+                .firstCached(preferenceManager2.getDrawerPaddingTopFactor()), 0.5f, 2f);
         this.inv = inv;
 
         mDeviceProperties = DeviceProperties.Factory.createDeviceProperties(
@@ -720,9 +720,11 @@ public class DeviceProfile {
             allAppsShiftRange =
                     res.getDimensionPixelSize(R.dimen.all_apps_starting_vertical_translate);
         }
-        // Lawnchair: extra user-configurable app drawer top padding. The factor is additive
-        // and slider-ranged 100%-200% (default 100%), so subtract 1f to keep 100% as no change.
-        allAppsPadding.top += Math.round(iconSizePx * (drawerPaddingTopFactor - 1f));
+        // Lawnchair: user-configurable app drawer top padding. The factor is additive and
+        // slider-ranged 50%-200% (default 100%), so subtract 1f to keep 100% as no change.
+        // Below 100% it eats into the default padding, so clamp to keep the list on screen.
+        allAppsPadding.top = Math.max(0,
+                allAppsPadding.top + Math.round(iconSizePx * (drawerPaddingTopFactor - 1f)));
         allAppsOpenDuration = res.getInteger(R.integer.config_allAppsOpenDuration);
         allAppsCloseDuration = res.getInteger(R.integer.config_allAppsCloseDuration);
 
