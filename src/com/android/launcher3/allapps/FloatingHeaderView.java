@@ -37,6 +37,8 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.R;
 import com.android.launcher3.allapps.ActivityAllAppsContainerView.AdapterHolder;
 import com.android.launcher3.util.PluginManagerWrapper;
+import com.android.launcher3.deviceprofile.AllAppsProfile;
+import com.android.launcher3.Utilities;
 import com.android.launcher3.views.ActivityContext;
 import com.android.launcher3.workprofile.PersonalWorkSlidingTabStrip;
 import com.android.systemui.plugins.AllAppsRow;
@@ -300,12 +302,26 @@ public class FloatingHeaderView extends LinearLayout implements
 
     int getMaxTranslation() {
         if (mMaxTranslation == 0 && (mTabsHidden || mFloatingRowsCollapsed)) {
-            return getResources().getDimensionPixelSize(R.dimen.all_apps_search_bar_bottom_padding);
+            return getAllAppsRowLeadingSpace();
         } else if (mMaxTranslation > 0 && mTabsHidden) {
             return mMaxTranslation + getPaddingTop();
         } else {
             return mMaxTranslation;
         }
+    }
+
+    /**
+     * Lawnchair: the empty space an all-apps cell leaves above its icon. Used as the gap below the
+     * search bar so the first row sits exactly one inter-row gap away from it. The fixed
+     * all_apps_search_bar_bottom_padding this replaces was noticeably larger than the spacing
+     * between rows, and being a constant it could not track the user's icon size or grid density.
+     */
+    private int getAllAppsRowLeadingSpace() {
+        AllAppsProfile profile =
+                ActivityContext.lookupContext(getContext()).getDeviceProfile().getAllAppsProfile();
+        int contentHeight = profile.getIconSizePx() + profile.getIconDrawablePaddingPx()
+                + Utilities.calculateTextHeight(profile.getIconTextSizePx());
+        return Math.max(0, (profile.getCellHeightPx() - contentHeight) / 2);
     }
 
     private boolean canSnapAt(int currentScrollY) {
