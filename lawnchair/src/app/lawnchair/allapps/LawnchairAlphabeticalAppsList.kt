@@ -8,7 +8,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import app.lawnchair.data.folder.FolderEntry
 import app.lawnchair.data.folder.model.FolderViewModel
-import app.lawnchair.preferences2.ReloadHelper
 import app.lawnchair.launcher
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
@@ -55,8 +54,6 @@ class LawnchairAlphabeticalAppsList<T>(
      */
     private val filteredKeys = mutableSetOf<String>()
 
-    private val reloadHelper by lazy { ReloadHelper(context) }
-
     /** Suppresses a grid reload for the first emission, which is just the initial population. */
     private var foldersPopulated = false
 
@@ -89,7 +86,7 @@ class LawnchairAlphabeticalAppsList<T>(
                 // contents until the grid is reloaded. Doing that at write time instead left the
                 // display one edit behind, because the folder data arrives here afterwards.
                 if (changed && foldersPopulated) {
-                    reloadHelper.reloadGrid()
+                    FolderGridReload.request(context)
                 }
                 foldersPopulated = true
             }
