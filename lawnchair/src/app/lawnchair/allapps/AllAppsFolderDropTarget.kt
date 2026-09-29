@@ -72,6 +72,7 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
         // target will animate the drag view away and dispose of it. We drop instantly, so hand
         // that back to the drag controller -- otherwise the dragged icon and the drop target bar
         // stay on screen for good.
+        android.util.Log.i("LcFolderPerf", "onDrop: entered")
         d.deferDragViewCleanupPostAnimation = false
         val draggedKey = componentKeyOf(d.dragInfo) ?: return
         when (val target = candidate?.let { tagOf(it) }) {
@@ -109,8 +110,11 @@ class AllAppsFolderDropTarget(private val launcher: Launcher) : DropTarget {
         if (targetKey == dragged) return
         val title = target.title?.toString().orEmpty()
         scope.launch {
+            val t0 = android.os.SystemClock.uptimeMillis()
             val id = folderService.saveFolderInfo(title).toInt()
+            android.util.Log.i("LcFolderPerf", "create: insert +${android.os.SystemClock.uptimeMillis() - t0}ms")
             folderService.updateFolderWithItems(id, title, listOf(targetKey, dragged))
+            android.util.Log.i("LcFolderPerf", "create: items +${android.os.SystemClock.uptimeMillis() - t0}ms")
         }
     }
 

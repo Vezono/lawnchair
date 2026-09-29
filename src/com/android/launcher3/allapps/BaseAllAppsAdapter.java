@@ -45,7 +45,14 @@ import com.android.launcher3.R;
 import com.android.launcher3.allapps.search.SearchAdapterProvider;
 import com.android.launcher3.folder.FolderIcon;
 import com.android.launcher3.model.data.AppInfo;
+import android.content.ComponentName;
+import android.text.TextUtils;
+
 import com.android.launcher3.model.data.FolderInfo;
+import com.android.launcher3.model.data.ItemInfo;
+
+import java.util.ArrayList;
+import java.util.List;
 import com.android.launcher3.views.ActivityContext;
 
 /**
@@ -160,7 +167,29 @@ public abstract class BaseAllAppsAdapter<T extends Context & ActivityContext> ex
          * as well. Returning true will prevent redrawing of thee item.
          */
         public boolean isContentSame(AdapterItem other) {
+            // Lawnchair: a folder item carries its payload in folderInfo, not itemInfo, so the
+            // check below saw null on both sides and reported every folder as unchanged. A folder
+            // whose contents had just been edited was therefore never rebound and went on showing
+            // its previous preview until something else happened to rebuild the row.
+            if (folderInfo != null || other.folderInfo != null) {
+                return folderInfo != null && other.folderInfo != null
+                        && folderInfo.id == other.folderInfo.id
+                        && TextUtils.equals(folderInfo.title, other.folderInfo.title)
+                        && folderContentKeys(folderInfo).equals(folderContentKeys(other.folderInfo));
+            }
             return itemInfo == null && other.itemInfo == null;
+        }
+
+        /** Lawnchair: identifies a folder's contents well enough to spot an add or a removal. */
+        private static List<String> folderContentKeys(FolderInfo info) {
+            List<String> keys = new ArrayList<>();
+            for (ItemInfo item : info.getContents()) {
+                ComponentName component = item.getTargetComponent();
+                keys.add(component == null
+                        ? String.valueOf(item.id)
+                        : component.flattenToShortString());
+            }
+            return keys;
         }
 
         @Nullable
