@@ -195,6 +195,11 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = context.resources.getBoolean(R.bool.config_default_always_reload_icons),
     )
 
+    val dropTargetIconOutline = preference(
+        key = booleanPreferencesKey(name = "drop_target_icon_outline"),
+        defaultValue = context.resources.getBoolean(R.bool.config_default_drop_target_icon_outline),
+    )
+
     val colorStyle = preference(
         key = stringPreferencesKey("color_style"),
         defaultValue = ColorStyle.fromString("tonal_spot"),

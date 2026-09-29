@@ -29,9 +29,12 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -69,6 +72,7 @@ import com.android.launcher3.config.FeatureFlags;
 import com.android.launcher3.dragndrop.DraggableView;
 import com.android.launcher3.folder.PreviewBackground;
 import com.android.launcher3.model.data.ItemInfo;
+import com.android.launcher3.model.data.ItemInfoWithIcon;
 import com.android.launcher3.model.data.LauncherAppWidgetInfo;
 import com.android.launcher3.util.CellAndSpan;
 import com.android.launcher3.util.GridOccupancy;
@@ -165,6 +169,21 @@ public class CellLayout extends ViewGroup {
     private RectF mVisualizeGridRect = new RectF();
     private Paint mVisualizeGridPaint = new Paint();
     private int mGridVisualizationRoundingRadius;
+    // Lawnchair: stroke width AOSP uses for the drop indicator, reused by the icon outline
+    private static final int DRAG_OUTLINE_STROKE_PX = 8;
+    private static final int DRAG_OUTLINE_DILATION_STEPS = 16;
+    // Lawnchair: gap between the icon and the icon-only drop outline
+    private int mDropTargetIconOutlinePadding;
+    // Lawnchair: silhouette of the dragged icon, traced from its alpha channel. Built once per
+    // drag and reused for every fading outline in mDragOutlines. Deliberately outlives the drag:
+    // clearDragOutlines() only starts a fade, so dropping it early makes the outline that is
+    // still fading snap back to a rounded square. Replaced when a different item is dragged.
+    private Bitmap mDragOutlineIcon;
+    private Bitmap mDragOutlineIconSource;
+    private int mDragOutlineIconSize;
+    private final Paint mDragOutlineIconPaint =
+            new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final RectF mDragOutlineIconRect = new RectF();
     private float mGridAlpha = 0f;
     private int mGridColor = 0;
     protected float mSpringLoadedProgress = 0f;
@@ -285,6 +304,8 @@ public class CellLayout extends ViewGroup {
         mGridColor = ColorTokens.WorkspaceAccentColor.resolveColor(getContext());
         mGridVisualizationRoundingRadius =
                 res.getDimensionPixelSize(R.dimen.grid_visualization_rounding_radius);
+        mDropTargetIconOutlinePadding =
+                res.getDimensionPixelSize(R.dimen.drop_target_icon_outline_padding);
         mReorderPreviewAnimationMagnitude = (REORDER_PREVIEW_MAGNITUDE * deviceProfile.iconSizePx);
 
         // Initialize the data structures used for the drag visualization.
@@ -636,7 +657,7 @@ public class CellLayout extends ViewGroup {
         int paddingX = Math.min((mCellWidth - dp.iconSizePx) / 2, dp.gridVisualizationPaddingX);
         int paddingY = Math.min((mCellHeight - dp.iconSizePx) / 2, dp.gridVisualizationPaddingY);
 
-        mVisualizeGridPaint.setStrokeWidth(8);
+        mVisualizeGridPaint.setStrokeWidth(DRAG_OUTLINE_STROKE_PX);
 
         // This is used for debugging purposes only
         if (mVisualizeCells) {
@@ -655,6 +676,10 @@ public class CellLayout extends ViewGroup {
         }
 
         if (mVisualizeDropLocation) {
+            // Lawnchair: when enabled, outline only the icon rather than the whole cell, which
+            // otherwise also covers the label.
+            final boolean iconOnlyOutline =
+                    PreferenceCacheExtensionsKt.firstCached(pref.getDropTargetIconOutline());
             for (int i = 0; i < mDragOutlines.length; i++) {
                 final float alpha = mDragOutlineAlphas[i];
                 if (alpha <= 0) continue;
@@ -662,19 +687,119 @@ public class CellLayout extends ViewGroup {
                 cellToRect(params.getCellX(), params.getCellY(), params.cellHSpan, params.cellVSpan,
                         mTempOnDrawCellToRect);
                 mVisualizeGridRect.set(mTempOnDrawCellToRect);
-                mVisualizeGridRect.inset(paddingX, paddingY);
 
-                mVisualizeGridPaint.setAlpha(255);
-                mVisualizeGridPaint.setStyle(Paint.Style.STROKE);
-                mVisualizeGridPaint.setColor(Color.argb((int) (alpha),
-                        Color.red(mGridColor), Color.green(mGridColor), Color.blue(mGridColor)));
+                boolean iconCell =
+                        iconOnlyOutline && params.cellHSpan == 1 && params.cellVSpan == 1;
+                float roundingRadius = mGridVisualizationRoundingRadius;
+                if (iconCell) {
+                    setIconOutlineRect(mTempOnDrawCellToRect, dp, mVisualizeGridRect);
+                    roundingRadius = Math.min(roundingRadius, mVisualizeGridRect.height() / 3f);
+                } else {
+                    mVisualizeGridRect.inset(paddingX, paddingY);
+                }
 
                 canvas.save();
                 canvas.translate(getMarginForGivenCellParams(params), 0);
-                canvas.drawRoundRect(mVisualizeGridRect, mGridVisualizationRoundingRadius,
-                        mGridVisualizationRoundingRadius, mVisualizeGridPaint);
+                if (iconCell && mDragOutlineIcon != null) {
+                    // Trace the dragged icon's own silhouette rather than a rounded square. The
+                    // bitmap already carries the outline padding, so grow the rect to match.
+                    mDragOutlineIconRect.set(mVisualizeGridRect);
+                    mDragOutlineIconRect.inset(-mDropTargetIconOutlinePadding,
+                            -mDropTargetIconOutlinePadding);
+                    mDragOutlineIconPaint.setAlpha((int) alpha);
+                    canvas.drawBitmap(mDragOutlineIcon, null, mDragOutlineIconRect,
+                            mDragOutlineIconPaint);
+                } else {
+                    mVisualizeGridPaint.setAlpha(255);
+                    mVisualizeGridPaint.setStyle(Paint.Style.STROKE);
+                    mVisualizeGridPaint.setColor(Color.argb((int) (alpha),
+                            Color.red(mGridColor), Color.green(mGridColor), Color.blue(mGridColor)));
+                    canvas.drawRoundRect(mVisualizeGridRect, roundingRadius, roundingRadius,
+                            mVisualizeGridPaint);
+                }
                 canvas.restore();
             }
+        }
+    }
+
+    /**
+     * Lawnchair: sets {@code outRect} to the bounds of the icon within the given cell, mirroring the
+     * way BubbleTextView#getIconBounds places it, so the drop indicator can outline just the icon
+     * instead of the full cell.
+     */
+    private void setIconOutlineRect(Rect cellRect, DeviceProfile dp, RectF outRect) {
+        final int iconSize = mContainerType == FOLDER ? dp.folderChildIconSizePx : dp.iconSizePx;
+        // Matches the top padding ShortcutAndWidgetContainer#measureChild applies to the cell child.
+        final int cellPaddingY = mContainerType == WORKSPACE && dp.cellYPaddingPx >= 0
+                ? dp.cellYPaddingPx
+                : Math.max(0,
+                        (cellRect.height() - dp.getCellContentHeight(mContainerType)) / 2);
+        final float left = cellRect.left + (cellRect.width() - iconSize) / 2f;
+        final float top = cellRect.top + cellPaddingY;
+        outRect.set(left, top, left + iconSize, top + iconSize);
+        outRect.inset(-mDropTargetIconOutlinePadding, -mDropTargetIconOutlinePadding);
+    }
+
+    /**
+     * Lawnchair: builds {@link #mDragOutlineIcon}, a ring tracing the alpha silhouette of the
+     * dragged item's icon, so the drop indicator follows the icon's real shape. No-op when the
+     * dragged item has no usable icon, in which case the caller falls back to a rounded square.
+     */
+    private void updateDragOutlineIcon(DropTarget.DragObject dragObject, DeviceProfile dp) {
+        Bitmap source = null;
+        if (dragObject != null && dragObject.dragInfo instanceof ItemInfoWithIcon) {
+            ItemInfoWithIcon info = (ItemInfoWithIcon) dragObject.dragInfo;
+            if (info.bitmap != null && !info.bitmap.isNullOrLowRes()) {
+                source = info.bitmap.icon;
+            }
+        }
+        int size = mContainerType == FOLDER ? dp.folderChildIconSizePx : dp.iconSizePx;
+        if (source == mDragOutlineIconSource && size == mDragOutlineIconSize) {
+            return;
+        }
+        mDragOutlineIconSource = source;
+        mDragOutlineIconSize = size;
+        mDragOutlineIcon = source == null ? null : createIconOutline(source, size);
+    }
+
+    /**
+     * Lawnchair: stamps the icon's alpha mask around a circle to dilate it, then punches the
+     * undilated mask back out, leaving a uniform ring that hugs the icon's silhouette.
+     */
+    private Bitmap createIconOutline(Bitmap icon, int size) {
+        int gap = mDropTargetIconOutlinePadding;
+        int stroke = DRAG_OUTLINE_STROKE_PX;
+        int dim = size + 2 * (gap + stroke);
+        if (dim <= 0) {
+            return null;
+        }
+        Bitmap alpha = icon.extractAlpha();
+        Bitmap out = Bitmap.createBitmap(dim, dim, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(out);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        paint.setColor(mGridColor);
+        float inset = gap + stroke;
+        stampDilated(canvas, alpha, paint, inset, size, gap + stroke);
+        paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_OUT));
+        stampDilated(canvas, alpha, paint, inset, size, gap);
+        alpha.recycle();
+        return out;
+    }
+
+    private static void stampDilated(Canvas canvas, Bitmap alpha, Paint paint, float inset,
+            int size, float radius) {
+        RectF dst = new RectF();
+        if (radius <= 0) {
+            dst.set(inset, inset, inset + size, inset + size);
+            canvas.drawBitmap(alpha, null, dst, paint);
+            return;
+        }
+        for (int i = 0; i < DRAG_OUTLINE_DILATION_STEPS; i++) {
+            double angle = 2 * Math.PI * i / DRAG_OUTLINE_DILATION_STEPS;
+            float dx = (float) (Math.cos(angle) * radius);
+            float dy = (float) (Math.sin(angle) * radius);
+            dst.set(inset + dx, inset + dy, inset + size + dx, inset + size + dy);
+            canvas.drawBitmap(alpha, null, dst, paint);
         }
     }
 
@@ -1194,6 +1319,11 @@ public class CellLayout extends ViewGroup {
 
     void visualizeDropLocation(int cellX, int cellY, int spanX, int spanY,
                                DropTarget.DragObject dragObject) {
+        // Lawnchair: keep the icon silhouette in sync with whatever is being dragged.
+        if (spanX == 1 && spanY == 1
+                && PreferenceCacheExtensionsKt.firstCached(pref.getDropTargetIconOutline())) {
+            updateDragOutlineIcon(dragObject, mActivity.getDeviceProfile());
+        }
         if (mDragCell[0] != cellX || mDragCell[1] != cellY || mDragCellSpan[0] != spanX
                 || mDragCellSpan[1] != spanY) {
             determineIfDragHapticsPlay();

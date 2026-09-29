@@ -724,6 +724,8 @@
 
     <string name="infinite_scrolling_label">Infinite scrolling</string>
     <string name="infinite_scrolling_description">Swipe to loop between the first and last pages</string>
+    <string name="drop_target_icon_outline_label">Icon-only drop outline</string>
+    <string name="drop_target_icon_outline_description">Highlight only the icon area when dragging, instead of the whole cell including the label</string>
 
     <string name="home_screen_grid">Home screen grid</string>
     <string name="home_screen_lock">Lock home screen</string>

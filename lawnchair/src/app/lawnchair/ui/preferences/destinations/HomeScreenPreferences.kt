@@ -100,6 +100,11 @@ fun HomeScreenPreferences(
                 label = stringResource(id = R.string.infinite_scrolling_label),
                 description = stringResource(id = R.string.infinite_scrolling_description),
             )
+            SwitchPreference(
+                prefs2.dropTargetIconOutline.getAdapter(),
+                label = stringResource(id = R.string.drop_target_icon_outline_label),
+                description = stringResource(id = R.string.drop_target_icon_outline_description),
+            )
         }
         PreferenceGroup(heading = stringResource(id = R.string.home_screen_actions)) {
             ClickablePreference(
