@@ -1,6 +1,7 @@
 package app.lawnchair.search.algorithms
 
 import android.content.Context
+import app.lawnchair.util.AppSuggestions
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.preferences2.firstCached
@@ -66,7 +67,12 @@ class LawnchairLocalSearchAlgorithm(context: Context) : LawnchairSearchAlgorithm
         modelRetryJob?.cancel()
         modelRetryJob = appState.model.runWhenModelLoaded(coroutineScope) { apps ->
             val appResults = appSearchProvider.search(context, query, apps)
-            val shortcutResults = shortcutSearchProvider.search(context, appResults)
+            // Lawnchair: the app itself still shows up, but an app opted out of suggestions
+            // contributes no shortcut results, which would reveal how it is used.
+            val suggestibleApps = appResults.filterNot { result ->
+                AppSuggestions.isMuted(context, result.data.targetComponent, result.data.user)
+            }
+            val shortcutResults = shortcutSearchProvider.search(context, suggestibleApps)
 
             currentJob?.cancel()
             currentJob = coroutineScope.launch {

@@ -145,6 +145,8 @@ fun CustomizeAppDialog(
     val showComponentNames by preferenceManager2.showComponentNames.asState()
     val hiddenApps by preferenceManager2.hiddenApps.asState()
     val adapter = preferenceManager2.hiddenApps.getAdapter()
+    val noSuggestionApps by preferenceManager2.noSuggestionApps.asState()
+    val noSuggestionAdapter = preferenceManager2.noSuggestionApps.getAdapter()
     val context = LocalContext.current
     var title by remember {
         mutableStateOf(prefs.customAppName[componentKey] ?: defaultTitle)
@@ -198,6 +200,16 @@ fun CustomizeAppDialog(
                     val newSet = hiddenApps.toMutableSet()
                     if (newValue) newSet.add(stringKey) else newSet.remove(stringKey)
                     adapter.onChange(newSet)
+                },
+            )
+            SwitchPreference(
+                checked = noSuggestionApps.contains(stringKey),
+                label = stringResource(id = R.string.disable_suggestions_label),
+                description = stringResource(id = R.string.disable_suggestions_description),
+                onCheckedChange = { newValue ->
+                    val newSet = noSuggestionApps.toMutableSet()
+                    if (newValue) newSet.add(stringKey) else newSet.remove(stringKey)
+                    noSuggestionAdapter.onChange(newSet)
                 },
             )
         }

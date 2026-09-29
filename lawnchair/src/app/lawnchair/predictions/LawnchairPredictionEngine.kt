@@ -11,6 +11,7 @@ import android.os.Process
 import android.os.UserHandle
 import android.util.Log
 import androidx.annotation.RequiresApi
+import app.lawnchair.util.AppSuggestions
 import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.preferences2.firstCached
 import com.android.launcher3.AppFilter
@@ -54,6 +55,8 @@ class LawnchairPredictionEngine(
                 val componentName = ComponentName(parsedKey.packageName, parsedKey.className)
                 val storeKey = toStoreKey(componentName, parsedKey.user)
                 if (storeKey in excludedKeys) return@forEach
+                // Lawnchair: never predict an app that opted out of suggestions.
+                if (AppSuggestions.isPackageMuted(context, parsedKey.packageName)) return@forEach
 
                 try {
                     launcherApps?.resolveActivity(

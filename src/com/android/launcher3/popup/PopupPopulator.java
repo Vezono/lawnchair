@@ -120,9 +120,14 @@ public class PopupPopulator {
         return () -> {
             ApplicationInfoWrapper infoWrapper =
                     new ApplicationInfoWrapper(context, targetPackage, user);
-            List<ShortcutInfo> shortcuts = new ShortcutRequest(context, user)
-                    .withContainer(activity)
-                    .query(ShortcutRequest.PUBLISHED);
+            // Lawnchair: an app opted out of suggestions contributes no shortcuts to the popup,
+            // which would otherwise spell out what it is used for.
+            List<ShortcutInfo> shortcuts =
+                    app.lawnchair.util.AppSuggestions.isMuted(context, activity, user)
+                            ? java.util.Collections.emptyList()
+                            : new ShortcutRequest(context, user)
+                                    .withContainer(activity)
+                                    .query(ShortcutRequest.PUBLISHED);
             shortcuts = PopupPopulator.sortAndFilterShortcuts(shortcuts);
             IconCache cache = LauncherAppState.getInstance(context).getIconCache();
             for (int i = 0; i < shortcuts.size() && i < shortcutViews.size(); i++) {
