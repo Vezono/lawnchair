@@ -209,7 +209,13 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
         PopupContainerWithArrow<Launcher> container;
         PopupDataProvider popupDataProvider = launcher.getPopupDataProvider();
-        int deepShortcutCount = popupDataProvider.getShortcutCountForItem(item);
+        // Lawnchair: this count reserves the shortcut rows before the async query runs, so the
+        // guard in PopupPopulator came too late -- a muted app got its slots allocated and then
+        // left blank.
+        int deepShortcutCount = app.lawnchair.util.AppSuggestions.isMuted(
+                launcher, item.getTargetComponent(), item.user)
+                ? 0
+                : popupDataProvider.getShortcutCountForItem(item);
         List<SystemShortcut> systemShortcuts = launcher.getSupportedShortcuts(item.container)
                 .map(s -> s.getShortcut(launcher, item, icon))
                 .filter(Objects::nonNull)

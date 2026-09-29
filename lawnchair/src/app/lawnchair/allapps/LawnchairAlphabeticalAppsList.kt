@@ -46,7 +46,13 @@ class LawnchairAlphabeticalAppsList<T>(
         (context as? ComponentActivity)?.application ?: context.launcher.application,
     )
     private val folderList = mutableListOf<FolderEntry>()
-    private val filteredList = mutableListOf<AppInfo>()
+    /**
+     * Component keys of apps that live in a drawer folder and are therefore kept out of the main
+     * list. Keys rather than AppInfo instances: AppInfo does not override equals, so comparing
+     * instances silently failed whenever the apps store had been refreshed since the list was
+     * built, leaving the app on show until the next full reload.
+     */
+    private val filteredKeys = mutableSetOf<String>()
 
     init {
         context.launcher.deviceProfile.inv.addOnChangeListener(this)
@@ -88,7 +94,7 @@ class LawnchairAlphabeticalAppsList<T>(
     override fun addAppsWithSections(appList: List<AppInfo?>?, startPosition: Int): Int {
         if (appList.isNullOrEmpty()) return startPosition
         val drawerListDefault = prefs.drawerList.get()
-        filteredList.clear()
+        filteredKeys.clear()
         var position = startPosition
 
         // Show app drawer folders only on main profile, to prevent state complexity
@@ -127,11 +133,13 @@ class LawnchairAlphabeticalAppsList<T>(
                     position++
 
                     if (prefs.folderApps.get()) {
-                        filteredList.addAll(resolvedApps)
+                        filteredKeys.addAll(resolvedApps.map { it.toComponentKey().toString() })
                     }
                 }
             }
-            val remainingApps = appList.filterNot { app -> filteredList.contains(app) && prefs.folderApps.get() }
+            val remainingApps = appList.filterNot { app ->
+                app != null && app.toComponentKey().toString() in filteredKeys
+            }
             position = super.addAppsWithSections(remainingApps, position)
         }
 
