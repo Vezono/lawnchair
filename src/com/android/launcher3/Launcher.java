@@ -2134,13 +2134,6 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     @Override
     public RunnableList startActivitySafely(View v, Intent intent, ItemInfo item) {
-        // Lawnchair: a protected app has to be unlocked first. Every launch surface -- workspace,
-        // drawer, search, folders, shortcuts -- comes through here, so this is the one gate.
-        if (app.lawnchair.util.AppProtection.shouldPrompt(this, item)) {
-            app.lawnchair.util.AppProtection.prompt(this, item,
-                    () -> startActivitySafely(v, intent, item));
-            return new RunnableList();
-        }
         if (!hasBeenResumed()) {
             RunnableList result = new RunnableList();
             // Workaround an issue where the WM launch animation is clobbered when finishing the

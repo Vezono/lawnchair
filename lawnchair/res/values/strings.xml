@@ -889,11 +889,6 @@
     <!-- HiddenAppsPreferences -->
     <string name="hide_from_drawer">Hide from app drawer</string>
     <string name="disable_suggestions_label">Disable suggestions</string>
-    <string name="protect_app_label">Protect with screen lock</string>
-    <string name="protect_app_description">Ask for your PIN, pattern or fingerprint before opening this app</string>
-    <string name="app_protection_prompt_title">Unlock to open</string>
-    <string name="app_protection_needs_screen_lock">Set a screen lock to protect apps</string>
-    <string name="app_protection_unsupported">Protecting apps needs Android 9 or newer</string>
     <string name="disable_suggestions_description">Keep this app out of search results, long-press shortcuts and predicted apps</string>
     <string name="hide_drop_target_label">Hide</string>
     <string name="home_screen_drop_target_label">Home screen</string>

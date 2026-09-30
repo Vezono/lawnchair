@@ -332,12 +332,6 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = setOf(),
     )
 
-    /** Apps that require the device credential before they will open. */
-    val protectedApps = preference(
-        key = stringSetPreferencesKey(name = "protected_apps"),
-        defaultValue = setOf(),
-    )
-
     val roundedWidgets = preference(
         key = booleanPreferencesKey(name = "rounded_widgets"),
         defaultValue = context.resources.getBoolean(R.bool.config_default_rounded_widgets),
