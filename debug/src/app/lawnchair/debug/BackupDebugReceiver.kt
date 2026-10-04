@@ -15,6 +15,7 @@ import com.android.launcher3.util.ComponentKey
 import android.os.Process
 import app.lawnchair.preferences2.PreferenceManager2
 import com.patrykmichalik.opto.core.firstBlocking
+import com.patrykmichalik.opto.core.setBlocking
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +47,7 @@ class BackupDebugReceiver : BroadcastReceiver() {
                     ACTION_WIPE_FOLDERS -> wipeFolders(context)
                     ACTION_SET_ICON -> setIconOverride(context)
                     ACTION_ADD_TO_FOLDER -> addAppToFolder(context, intent.getStringExtra("component"))
+                    ACTION_TOGGLE_HIDDEN -> toggleHidden(context, intent.getStringExtra("component"))
                     else -> Log.w(TAG, "unknown action ${intent.action}")
                 }
             } catch (t: Throwable) {
@@ -90,6 +92,16 @@ class BackupDebugReceiver : BroadcastReceiver() {
         backup.readInfoAndPreview()
         backup.restore(LawnchairBackup.INCLUDE_LAYOUT_AND_SETTINGS)
         Log.i(TAG, "RESTORE done from $path")
+    }
+
+    /** Hides or unhides an app, which removes or restores one icon in the drawer list. */
+    private fun toggleHidden(context: Context, component: String?) {
+        val key = component ?: return
+        val prefs = PreferenceManager2.getInstance(context)
+        val current = prefs.hiddenApps.firstBlocking()
+        val next = if (key in current) current - key else current + key
+        prefs.hiddenApps.setBlocking(next)
+        Log.i(TAG, "TOGGLE_HIDDEN $key hidden=${key !in current} total=${next.size}")
     }
 
     /** Writes exactly what a drawer folder drop writes, without the drag machinery. */
@@ -149,5 +161,6 @@ class BackupDebugReceiver : BroadcastReceiver() {
         private const val ACTION_WIPE_FOLDERS = "app.lawnchair.debug.WIPE_FOLDERS"
         private const val ACTION_SET_ICON = "app.lawnchair.debug.SET_ICON"
         private const val ACTION_ADD_TO_FOLDER = "app.lawnchair.debug.ADD_TO_FOLDER"
+        private const val ACTION_TOGGLE_HIDDEN = "app.lawnchair.debug.TOGGLE_HIDDEN"
     }
 }
