@@ -889,6 +889,11 @@
     <!-- HiddenAppsPreferences -->
     <string name="hide_from_drawer">Hide from app drawer</string>
     <string name="disable_suggestions_label">Disable suggestions</string>
+    <string name="notices_label">Notices</string>
+    <string name="show_announcements_label">Announcements</string>
+    <string name="show_announcements_description">Show announcement cards at the top of settings</string>
+    <string name="show_dev_build_warning_label">Development build warning</string>
+    <string name="show_dev_build_warning_description">Show the banner warning that this build may contain bugs</string>
     <string name="disable_suggestions_description">Keep this app out of search results, long-press shortcuts and predicted apps</string>
     <string name="hide_drop_target_label">Hide</string>
     <string name="home_screen_drop_target_label">Home screen</string>

@@ -113,6 +113,20 @@ fun GeneralPreferences(modifier: Modifier = Modifier) {
                 description = stringResource(id = R.string.live_information_description),
             )
         }
+        PreferenceGroup(heading = stringResource(id = R.string.notices_label)) {
+            SwitchPreference(
+                adapter = liveInfoManager.showAnnouncements.getAdapter(),
+                label = stringResource(id = R.string.show_announcements_label),
+                description = stringResource(id = R.string.show_announcements_description),
+            )
+            if (BuildConfig.APPLICATION_ID.contains("nightly") || BuildConfig.DEBUG) {
+                SwitchPreference(
+                    adapter = prefs2.showDevBuildWarning.getAdapter(),
+                    label = stringResource(id = R.string.show_dev_build_warning_label),
+                    description = stringResource(id = R.string.show_dev_build_warning_description),
+                )
+            }
+        }
         ExpandAndShrink(visible = prefs2.enableFontSelection.asState().value) {
             PreferenceGroup(heading = stringResource(id = R.string.font_label)) {
                 FontPreference(

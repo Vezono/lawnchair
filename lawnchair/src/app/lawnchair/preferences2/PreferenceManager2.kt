@@ -326,6 +326,12 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = setOf(),
     )
 
+    /** Whether the development build warning is shown at the top of settings. */
+    val showDevBuildWarning = preference(
+        key = booleanPreferencesKey(name = "show_dev_build_warning"),
+        defaultValue = true,
+    )
+
     /** Apps excluded from search results, long-press shortcuts and predictions. */
     val noSuggestionApps = preference(
         key = stringSetPreferencesKey(name = "no_suggestion_apps"),

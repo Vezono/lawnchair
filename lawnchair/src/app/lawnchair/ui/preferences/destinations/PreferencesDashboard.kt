@@ -58,6 +58,7 @@ import app.lawnchair.LawnchairLauncher
 import app.lawnchair.preferences.getAdapter
 import app.lawnchair.preferences.observeAsState
 import app.lawnchair.preferences.preferenceManager
+import app.lawnchair.preferences2.asState
 import app.lawnchair.preferences2.firstCached
 import app.lawnchair.preferences2.preferenceManager2
 import app.lawnchair.ui.OverflowMenuGrouped
@@ -119,7 +120,10 @@ fun PreferencesDashboard(
     ) {
         AnnouncementPreference()
 
-        if (BuildConfig.APPLICATION_ID.contains("nightly") || BuildConfig.DEBUG) {
+        val showDevBuildWarning by prefs2.showDevBuildWarning.asState()
+        if ((BuildConfig.APPLICATION_ID.contains("nightly") || BuildConfig.DEBUG) &&
+            showDevBuildWarning
+        ) {
             PreferencesDebugWarning()
             Spacer(modifier = Modifier.height(8.dp))
         }
