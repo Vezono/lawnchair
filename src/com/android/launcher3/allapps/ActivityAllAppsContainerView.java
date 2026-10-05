@@ -426,10 +426,14 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         return mSearchContainer;
     }
 
-    /** Invoke when the current search session is finished. */
+    /** Clears displayed search results. */
     public void onClearSearchResult() {
         getMainAdapterProvider().clearHighlightedItem();
-        animateToSearchState(false);
+        ExtendedEditText editText = mSearchUiManager.getEditText();
+        // An empty, focused query is still an active search session.
+        boolean keepSearchFocus = editText != null && editText.isFocused()
+                && editText.getText().length() == 0;
+        animateToSearchState(false, DEFAULT_SEARCH_TRANSITION_DURATION_MS, keepSearchFocus);
         rebindAdapters();
     }
 
@@ -467,6 +471,11 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     }
 
     void animateToSearchState(boolean goingToSearch, long durationMs) {
+        animateToSearchState(goingToSearch, durationMs, false);
+    }
+
+    private void animateToSearchState(boolean goingToSearch, long durationMs,
+            boolean keepSearchFocus) {
         if (!mSearchTransitionController.isRunning() && goingToSearch == isSearching()) {
             return;
         }
@@ -498,7 +507,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                         if (mViewPager != null) {
                             mViewPager.setCurrentPage(previousPage);
                         }
-                        onActivePageChanged(previousPage);
+                        onActivePageChanged(previousPage, keepSearchFocus);
                         mSearchExitInProgress = false;
                     }
                 });
@@ -646,22 +655,17 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         return isSearching();
     }
 
-    /** Lawnchair: true while the user is still in the search field, whatever the results show. */
-    private boolean isSearchFieldFocused() {
-        View editText = mSearchUiManager == null ? null : mSearchUiManager.getEditText();
-        return editText != null && editText.isFocused();
-    }
-
     @Override
     public void onActivePageChanged(int currentActivePage) {
+        onActivePageChanged(currentActivePage, false);
+    }
+
+    private void onActivePageChanged(int currentActivePage, boolean keepSearchFocus) {
         if (mSearchTransitionController.isRunning()) {
             // Will be called at the end of the animation.
             return;
         }
-        // Lawnchair: clearing the last character exits search, which lands here and used to close
-        // the keyboard mid-typing. Leave it up while the search field still has focus; the other
-        // ways out of search (back, scrolling the list, closing the drawer) drop focus first.
-        if (currentActivePage != SEARCH && !isSearchFieldFocused()) {
+        if (currentActivePage != SEARCH && !keepSearchFocus) {
             mActivityContext.hideKeyboard();
         }
         if (mAH.get(currentActivePage).mRecyclerView != null) {
@@ -670,10 +674,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         }
         // Header keeps track of active recycler view to properly render header protection.
         mHeader.setActiveRV(currentActivePage);
-        // Lawnchair: exiting search resets the search bar, which clears focus and hides the
-        // keyboard -- so deleting the last character still dismissed the IME even with the guard
-        // above. Hold the reset back while the user is still in the search field.
-        reset(true /* animate */, !isSearching() && !isSearchFieldFocused() /* exitSearch */);
+        reset(true /* animate */, !isSearching() && !keepSearchFocus /* exitSearch */);
 
         mWorkManager.onActivePageChanged(currentActivePage);
     }
