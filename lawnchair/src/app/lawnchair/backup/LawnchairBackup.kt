@@ -67,7 +67,7 @@ class LawnchairBackup(
                     {
                         val file = entry.value
                         file.parentFile?.mkdirs()
-                        it.copyTo(file.outputStream())
+                        file.outputStream().use { out -> it.copyTo(out) }
                     }
                 },
             )
@@ -86,16 +86,17 @@ class LawnchairBackup(
         val databasesDir = context.getDatabasePath(LAUNCHER_DB_FILE_NAME).parentFile
         deleteDatabase(databasesDir, LauncherAppState.getIDP(context).dbFile)
         deleteDatabase(databasesDir, RESTORED_DB_FILE_NAME)
-
-        DeviceGridState(info.gridState).writeToPrefs(context, true)
         readZip(handlers)
+        // Written after the zip has been extracted: the backed up preferences file is one of
+        // the restored entries, so writing the grid state first would let it be overwritten.
+        DeviceGridState(info.gridState).writeToPrefs(context, true)
 
         // Lawnchair: the Room database file was just replaced underneath its still-open
         // connection. Drop the stale write-ahead log so it cannot be replayed over the restored
         // contents when the launcher restarts.
         deleteDatabaseSidecars(databasesDir, PREFS_DB_FILE_NAME)
 
-        var dbController = ModelDbController(context)
+        val dbController = ModelDbController(context)
         RestoreDbTask.performRestore(context, dbController)
     }
 
@@ -212,7 +213,7 @@ class LawnchairBackup(
                         getFiles(context, forRestore = false).entries.forEach {
                             if (!it.value.exists()) return@forEach
                             out.putNextEntry(ZipEntry(it.key))
-                            it.value.inputStream().copyTo(out)
+                            it.value.inputStream().use { input -> input.copyTo(out) }
                         }
                     }
                 }
