@@ -31,6 +31,7 @@ import android.window.SplashScreen
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
+import app.lawnchair.allapps.AllAppsFolderDropTarget
 import app.lawnchair.LawnchairApp.Companion.showQuickstepWarningIfNecessary
 import app.lawnchair.compat.LawnchairQuickstepCompat
 import app.lawnchair.data.AppDatabase
@@ -167,6 +168,11 @@ class LawnchairLauncher : QuickstepLauncher() {
             defaultOverlay.setEnableFeed(enable)
         }.launchIn(scope = lifecycleScope)
         launcher.stateManager.addStateListener(clearSearchStateListener)
+
+        // Lawnchair: lets a drag that stays in the drawer be dropped onto another app or folder to
+        // build a drawer folder. It reports isDropEnabled only while the drawer is showing, so it
+        // is inert for home screen drags.
+        dragController.addDropTarget(AllAppsFolderDropTarget(this))
 
         if (prefs.autoLaunchRoot.get()) {
             lifecycleScope.launch {

@@ -103,6 +103,11 @@ public class DeleteDropTarget extends ButtonDropTarget {
 
     @Override
     protected boolean supportsDrop(ItemInfo info) {
+        // Lawnchair: in the drawer this only ever reads "Cancel", which releasing anywhere else
+        // already does, so it is just taking room from Home screen and Hide.
+        if (app.lawnchair.views.HomeScreenDropTarget.isDraggingFromDrawer(getContext())) {
+            return false;
+        }
         return true;
     }
 

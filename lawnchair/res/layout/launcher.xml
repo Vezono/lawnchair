@@ -70,10 +70,6 @@
             android:paddingBottom="12dp"
             android:visibility="gone" />
 
-        <include
-            android:id="@+id/drop_target_bar"
-            layout="@layout/drop_target_bar" />
-
         <app.lawnchair.views.LawnchairScrimView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -89,6 +85,14 @@
             layout="@layout/all_apps"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
+        <!-- Lawnchair: kept after apps_view so the drop targets draw above the app drawer.
+             Drags that start in the drawer now stay there, and this bar was previously
+             covered by the drawer for their whole duration. It is invisible unless a drag
+             is in progress, so it does not occlude anything the rest of the time. -->
+        <include
+            android:id="@+id/drop_target_bar"
+            layout="@layout/drop_target_bar" />
 
     </com.android.launcher3.dragndrop.DragLayer>
 

@@ -46,7 +46,16 @@ class LawnchairAlphabeticalAppsList<T>(
         (context as? ComponentActivity)?.application ?: context.launcher.application,
     )
     private val folderList = mutableListOf<FolderEntry>()
-    private val filteredList = mutableListOf<AppInfo>()
+    /**
+     * Component keys of apps that live in a drawer folder and are therefore kept out of the main
+     * list. Keys rather than AppInfo instances: AppInfo does not override equals, so comparing
+     * instances silently failed whenever the apps store had been refreshed since the list was
+     * built, leaving the app on show until the next full reload.
+     */
+    private val filteredKeys = mutableSetOf<String>()
+
+    /** Suppresses a grid reload for the first emission, which is just the initial population. */
+    private var foldersPopulated = false
 
     init {
         context.launcher.deviceProfile.inv.addOnChangeListener(this)
@@ -69,9 +78,17 @@ class LawnchairAlphabeticalAppsList<T>(
     private fun observeFolders() {
         viewModel.folders.observeOnce(context as LifecycleOwner) { folders ->
             if (folders != null) {
+                val changed = folders != folderList.toList()
                 folderList.clear()
                 folderList.addAll(folders)
                 updateAdapterItems()
+                // updateAdapterItems refreshes the model but the drawer keeps showing its previous
+                // contents until the grid is reloaded. Doing that at write time instead left the
+                // display one edit behind, because the folder data arrives here afterwards.
+                if (changed && foldersPopulated) {
+                    FolderGridReload.request(context)
+                }
+                foldersPopulated = true
             }
         }
     }
@@ -88,7 +105,7 @@ class LawnchairAlphabeticalAppsList<T>(
     override fun addAppsWithSections(appList: List<AppInfo?>?, startPosition: Int): Int {
         if (appList.isNullOrEmpty()) return startPosition
         val drawerListDefault = prefs.drawerList.get()
-        filteredList.clear()
+        filteredKeys.clear()
         var position = startPosition
 
         // Show app drawer folders only on main profile, to prevent state complexity
@@ -127,11 +144,16 @@ class LawnchairAlphabeticalAppsList<T>(
                     position++
 
                     if (prefs.folderApps.get()) {
-                        filteredList.addAll(resolvedApps)
+                        // Use the folder's stored keys rather than the resolved AppInfo list: an
+                        // app that momentarily fails to resolve from the apps store would
+                        // otherwise escape the filter and stay visible in the main list.
+                        filteredKeys.addAll(folderEntry.itemComponentKeys)
                     }
                 }
             }
-            val remainingApps = appList.filterNot { app -> filteredList.contains(app) && prefs.folderApps.get() }
+            val remainingApps = appList.filterNot { app ->
+                app != null && app.toComponentKey().toString() in filteredKeys
+            }
             position = super.addAppsWithSections(remainingApps, position)
         }
 

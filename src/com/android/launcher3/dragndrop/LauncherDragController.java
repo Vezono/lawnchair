@@ -20,6 +20,7 @@ import static android.view.View.VISIBLE;
 import static com.android.launcher3.AbstractFloatingView.TYPE_DISCOVERY_BOUNCE;
 import static com.android.launcher3.Flags.removeAppsRefreshOnRightClick;
 import static com.android.launcher3.LauncherAnimUtils.SPRING_LOADED_EXIT_DELAY;
+import static com.android.launcher3.LauncherState.ALL_APPS;
 import static com.android.launcher3.LauncherState.EDIT_MODE;
 import static com.android.launcher3.LauncherState.NORMAL;
 import static com.android.launcher3.util.Executors.MAIN_EXECUTOR;
@@ -244,7 +245,10 @@ public class LauncherDragController extends DragController<Launcher> {
 
     @Override
     protected void exitDrag() {
-        if (!mIsInPreDrag && !mActivity.isInState(EDIT_MODE)) {
+        // Lawnchair: a drag that started in the app drawer stays in the drawer, so ending it
+        // must not drop the user out onto the home screen. Handing the drag to the workspace
+        // through the Home screen drop target leaves ALL_APPS first, so this still applies there.
+        if (!mIsInPreDrag && !mActivity.isInState(EDIT_MODE) && !mActivity.isInState(ALL_APPS)) {
             mActivity.getStateManager().goToState(NORMAL, SPRING_LOADED_EXIT_DELAY);
         }
     }

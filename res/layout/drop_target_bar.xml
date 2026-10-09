@@ -42,4 +42,14 @@
         android:gravity="center"
         android:text="@string/uninstall_drop_target_label" />
 
+    <!-- Lawnchair: hand the drag over to the home screen -->
+    <app.lawnchair.views.HomeScreenDropTarget
+        android:id="@+id/home_screen_target_text"
+        style="@style/DropTargetButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:text="@string/home_screen_drop_target_label" />
+
 </com.android.launcher3.DropTargetBar>

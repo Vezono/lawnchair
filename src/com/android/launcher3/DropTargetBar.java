@@ -230,6 +230,41 @@ public class DropTargetBar extends FrameLayout
                 firstButton.setTextSize(minTextSize);
                 secondButton.setTextSize(minTextSize);
             }
+        } else if (visibleCount > 2) {
+            // Lawnchair: AOSP only ever measured one or two targets, so a third was left at zero
+            // size and never appeared. Drawer drags add Home screen and Hide, so share the row.
+            DeviceProfile dp = mLauncher.getDeviceProfile();
+            int verticalPadding = dp.getDropTargetProfile().getVerticalPaddingPx();
+            int horizontalPadding = dp.getDropTargetProfile().getHorizontalPaddingPx();
+            int buttonGap = dp.getDropTargetProfile().getGapPx();
+            int availableWidth = (dp.getDeviceProperties().getAvailableWidthPx()
+                    - buttonGap * (visibleCount - 1)) / visibleCount;
+            int widthSpec = MeasureSpec.makeMeasureSpec(availableWidth, MeasureSpec.AT_MOST);
+
+            float minTextSize = Float.MAX_VALUE;
+            for (int i = 0; i < visibleCount; i++) {
+                ButtonDropTarget button = mTempTargets[i];
+                button.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                        dp.getDropTargetProfile().getTextSizePx());
+                button.setTextVisible(true);
+                button.setIconVisible(true);
+                button.setTextMultiLine(false);
+                button.setPadding(horizontalPadding, verticalPadding, horizontalPadding,
+                        verticalPadding);
+                button.measure(widthSpec, heightSpec);
+                if (!mIsVertical && button.isTextTruncated(availableWidth)) {
+                    // Narrow row: drop the icons before shrinking the labels.
+                    button.setIconVisible(false);
+                    button.measure(widthSpec, heightSpec);
+                }
+                minTextSize = Math.min(minTextSize, button.resizeTextToFit());
+            }
+            // Keep one text size across the row so the targets read as a set.
+            for (int i = 0; i < visibleCount; i++) {
+                ButtonDropTarget button = mTempTargets[i];
+                button.setTextSize(minTextSize);
+                button.measure(widthSpec, heightSpec);
+            }
         }
         setMeasuredDimension(width, height);
     }
@@ -287,6 +322,20 @@ public class DropTargetBar extends FrameLayout
                         leftButton.getMeasuredHeight());
                 rightButton.layout(rightButtonStart, 0, rightButtonEnd,
                         rightButton.getMeasuredHeight());
+            }
+        } else {
+            // Lawnchair: three or more targets, laid out as one centred row.
+            int buttonGap = dp.getDropTargetProfile().getGapPx();
+            int totalWidth = buttonGap * (visibleCount - 1);
+            for (int i = 0; i < visibleCount; i++) {
+                totalWidth += mTempTargets[i].getMeasuredWidth();
+            }
+            int start = barCenter - (totalWidth / 2);
+            for (int i = 0; i < visibleCount; i++) {
+                ButtonDropTarget button = mTempTargets[i];
+                int end = start + button.getMeasuredWidth();
+                button.layout(start, 0, end, button.getMeasuredHeight());
+                start = end + buttonGap;
             }
         }
     }

@@ -45,7 +45,15 @@ import com.android.launcher3.R;
 import com.android.launcher3.allapps.search.SearchAdapterProvider;
 import com.android.launcher3.folder.FolderIcon;
 import com.android.launcher3.model.data.AppInfo;
+import android.content.ComponentName;
+import android.text.TextUtils;
+
 import com.android.launcher3.model.data.FolderInfo;
+import com.android.launcher3.model.data.ItemInfo;
+
+import java.util.ArrayList;
+import java.util.Objects;
+import java.util.List;
 import com.android.launcher3.views.ActivityContext;
 
 /**
@@ -152,7 +160,30 @@ public abstract class BaseAllAppsAdapter<T extends Context & ActivityContext> ex
          * Returns true if the items represent the same object
          */
         public boolean isSameAs(AdapterItem other) {
-            return (other.viewType == viewType) && (other.getClass() == getClass());
+            if (other.viewType != viewType || other.getClass() != getClass()) {
+                return false;
+            }
+            // Lawnchair: this used to stop at the view type, so DiffUtil considered every app icon
+            // to be the same item as every other. Removing one from the middle of the list was
+            // then reported as a removal of the last item, and the wrong icon vanished until the
+            // launcher restarted. Identify the item by what it actually represents.
+            if (itemInfo != null || other.itemInfo != null) {
+                if (itemInfo == null || other.itemInfo == null) {
+                    return false;
+                }
+                ComponentName component = itemInfo.getTargetComponent();
+                ComponentName otherComponent = other.itemInfo.getTargetComponent();
+                if (component != null && otherComponent != null) {
+                    return component.equals(otherComponent)
+                            && Objects.equals(itemInfo.user, other.itemInfo.user);
+                }
+                return itemInfo.id == other.itemInfo.id;
+            }
+            if (folderInfo != null || other.folderInfo != null) {
+                return folderInfo != null && other.folderInfo != null
+                        && folderInfo.id == other.folderInfo.id;
+            }
+            return true;
         }
 
         /**
@@ -160,7 +191,35 @@ public abstract class BaseAllAppsAdapter<T extends Context & ActivityContext> ex
          * as well. Returning true will prevent redrawing of thee item.
          */
         public boolean isContentSame(AdapterItem other) {
-            return itemInfo == null && other.itemInfo == null;
+            // Lawnchair: a folder item carries its payload in folderInfo, not itemInfo, so the
+            // check below saw null on both sides and reported every folder as unchanged. A folder
+            // whose contents had just been edited was therefore never rebound and went on showing
+            // its previous preview until something else happened to rebuild the row.
+            if (folderInfo != null || other.folderInfo != null) {
+                return folderInfo != null && other.folderInfo != null
+                        && folderInfo.id == other.folderInfo.id
+                        && TextUtils.equals(folderInfo.title, other.folderInfo.title)
+                        && folderContentKeys(folderInfo).equals(folderContentKeys(other.folderInfo));
+            }
+            // Lawnchair: now that isSameAs pairs an icon with its own counterpart, an unchanged
+            // one need not be redrawn. The apps store hands out the same AppInfo instance while
+            // nothing about the app has changed, so instance equality is a cheap stand-in.
+            if (itemInfo != null || other.itemInfo != null) {
+                return itemInfo == other.itemInfo;
+            }
+            return true;
+        }
+
+        /** Lawnchair: identifies a folder's contents well enough to spot an add or a removal. */
+        private static List<String> folderContentKeys(FolderInfo info) {
+            List<String> keys = new ArrayList<>();
+            for (ItemInfo item : info.getContents()) {
+                ComponentName component = item.getTargetComponent();
+                keys.add(component == null
+                        ? String.valueOf(item.id)
+                        : component.flattenToShortString());
+            }
+            return keys;
         }
 
         @Nullable
